@@ -464,10 +464,12 @@ ansible-playbook -i hosts first-devops-playbook.yml
 
 ## Ansible을 이용한 Docker 이미지 관리
 
-테스트했던 도커이미지를 hub사이트에 업로드
+**테스트했던 도커이미지를 hub 사이트에 업로드**
+```
 docker push yoon11/cicd-project-ansible
+```
 
-위 작업을 playbook에 추가
+**위 작업을 playbook에 추가 - create-cicd-devops-image.yml**
 
 ```yml
 - hosts: all
@@ -487,20 +489,16 @@ docker push yoon11/cicd-project-ansible
     ignore_errors: yes
 
 ```
-이미지 빌드 -> 이미지 푸시 -> 기존 이미지 삭제
+- name: create a docker image with deployed waf file
+  - 이미지 생성
+- name: push the image on Docker Hub
+  - 이미지 푸시
+- name: remove the docker image from the ansible server
+  - 기존 이미지 삭제
 
-태그 부착
-docker tag cicd-project-ansible yoon11/cicd-project-ansible
-![image](https://user-images.githubusercontent.com/83503188/189525475-db307481-283d-433d-ad57-6451b12d5565.png)
+**컨테이너 생성해주는 playbook - create-cicd-devops-container.yml**
 
-로그인
-![image](https://user-images.githubusercontent.com/83503188/189525515-6c0b93ee-c18d-4dd6-8417-ec65189f7ba0.png)
-
-푸시
-![image](https://user-images.githubusercontent.com/83503188/189525539-7e326ddd-0574-4774-85b1-e3d958a0bf38.png)
-![image](https://user-images.githubusercontent.com/83503188/189525568-07558212-eeac-4b17-bd4e-d350932aa9ad.png)
-
-컨테이너 생성해주는 playbook
+ansible-server, docker-server 에 모두 적용
 
 ```yml
 - hosts: all
@@ -526,7 +524,39 @@ docker tag cicd-project-ansible yoon11/cicd-project-ansible
     command: docker run --privileged -d --name my_cicd_project -p 8080:8080 yoon11/cicd-project-ansible
 ```
 
-이미지 삭제 -> 이미지를 pull -> 이미지 컨테이너 생성
+- 이미지 삭제 -> Hub에서 이미지를 pull -> 컨테이너 생성
+
+**change the hosts file**
+
+```text
+172.17.0.3
+172.17.0.4
+```
+- docker-server IP 추가 
+
+여기서 문제는 두 서버에서 동일하게 이미지 생성 -> 컨테이너 생성이 이뤄지면, 이미지가 굳이 2번 생성되어 허브 사이트에 2번 push 되는 것은 좋지 못하다.
+
+```text
+ansible-playbook -i hosts create-cicd-devops-image.yml --limit 172.17.0.3 : ansible 서버에만 한정
+ansible-playbook -i hosts create-cicd-devops-container.yml --limit 172.17.0.4 : 도커 서버에만 적용
+```
+- limit 옵션을 통해서 image를 생성하여 hub에 푸시하는 playbook은 특정 IP에서만 한정할 수 있다.
+
+
+**태그 부착**
+```text
+docker tag cicd-project-ansible yoon11/cicd-project-ansible
+```
+![image](https://user-images.githubusercontent.com/83503188/189525475-db307481-283d-433d-ad57-6451b12d5565.png)
+
+**Hub 로그인**
+
+![image](https://user-images.githubusercontent.com/83503188/189525515-6c0b93ee-c18d-4dd6-8417-ec65189f7ba0.png)
+
+**Hub 푸시**
+
+![image](https://user-images.githubusercontent.com/83503188/189525539-7e326ddd-0574-4774-85b1-e3d958a0bf38.png)
+![image](https://user-images.githubusercontent.com/83503188/189525568-07558212-eeac-4b17-bd4e-d350932aa9ad.png)
 
 ansible 서버에서 docker 서버로 배포작업
 
@@ -537,20 +567,15 @@ host 추가
 172.17.0.4
 ```
 
-현재상태에서 playbook을 실행한다면 172.17.0.3, 172.17.0.4 두 곳 전부에서 이미지를 만들어서 푸시하게된다.
-불필요한 작업이 생성 --limit 172.17.0.3 : ansible 서버에만 한정
-
-ansible-playbook -i hosts create-cicd-devops-container.yml --limit 172.17.0.4
-도커 서버에만 적용
+**결과**
 
 ![image](https://user-images.githubusercontent.com/83503188/189526826-9535f4af-1b88-45b2-a5c3-fed0441530a4.png)
 
-현재 도커서버에는 이미지와 컨테이너가 존재하지 않기때문에 무시
-pull과 컨테이너 생성은 성공
+- 현재 도커서버에는 이미지와 컨테이너가 존재하지 않기때문에 무시, pull과 컨테이너 생성은 성공
 
-Ansible Playbook으로 Docker 컨테이너 생성
+## Ansible Playbook으로 Docker 컨테이너 생성
 
-Jenkins 명령어 추가
-ansible-playbook -i hosts create-cicd-proejct-image-playbook.yml --limit 172.17.0.3 : image 생성하는 playbook은 Ansible 서버로 한정
-ansible-playbook -i hosts create-cicd-proejct-container-playbook.yml --limit 172.17.0.4 : container 생성하는 playbook은 Docker 서버로 한정
+**Jenkins 명령어 추가**
+
+![image](https://user-images.githubusercontent.com/83503188/202685404-35da92ba-8f16-4ef2-a840-e34f7b40677d.png)
 
