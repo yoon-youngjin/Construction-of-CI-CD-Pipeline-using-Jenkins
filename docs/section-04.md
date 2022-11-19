@@ -457,3 +457,120 @@ ansible-playbook -i ./k8s/hosts k8s-cicd-service-playbook.yml -u vagrant
 ![image](https://user-images.githubusercontent.com/83503188/202845323-b1e17a9e-e666-4104-82a6-f9d4f2da24a7.png)
 
 ## Jenkins + Ansible + Kubernetes 연동하기
+
+![image](https://user-images.githubusercontent.com/83503188/202849846-76a4b1de-95f1-4354-89fa-ada70bf42323.png)
+
+**Setup Ansible on Jenkins**
+
+- Jenkins 관리 -> 시스템 설정 -> Publish over SSH
+
+![image](https://user-images.githubusercontent.com/83503188/202849642-7cd98896-7bb7-4ea9-bc2d-fb8b6780203e.png)
+
+- Item name: My-k8s-Project
+- Build Triggers: SSH Server: k8s-master
+- Exec command
+```text
+kubectl apply -f cicd-devops-deployment.yml
+```
+
+![image](https://user-images.githubusercontent.com/83503188/202850230-5c21bf9d-47f5-4378-a78f-c1b4a73b1559.png)
+
+**결과**
+
+![image](https://user-images.githubusercontent.com/83503188/202850262-523856d1-ec6d-45f6-a0a0-9f0811892b39.png)
+
+- Item name -> My-k8s-Project-using-Ansible
+- Build Triggers: SSH Server: ansible-server
+- Exec command
+```text
+ansible-playbook -i ./k8s/hosts k8s-cicd-deployment-playbook.tml
+```
+
+![image](https://user-images.githubusercontent.com/83503188/202850363-8827960b-08d2-4ed6-a796-225dfc4e98b6.png)
+
+**결과**
+
+![image](https://user-images.githubusercontent.com/83503188/202851054-3768025d-426b-4cfc-989a-be859457e8a3.png)
+
+- Append exec command
+```text
+ansible-playbook -i ./k8s/hosts k8s-cicd-deployment-playbook.tml
+ansible-playbook -i ./k8s/hosts k8s-cicd-service-playbook.tml
+```
+
+**결과**
+
+![image](https://user-images.githubusercontent.com/83503188/202851147-f241305e-3845-48c9-95c0-6c727a11a5d4.png)
+
+## 전체 CI/CD 자동화 프로세스 구성
+
+**Jenkins CI/CD Jobs**
+
+![image](https://user-images.githubusercontent.com/83503188/202851266-d3029f61-0056-4690-8b84-b4ee162e15d2.png)
+
+- CI 작업을 통해 최신 코드를 가지고 빌드된 결과물이 이미지화 되어서 Registry에 등록
+- CD 작업을 통해 Registry 에 등록된 이미지를 설치하고자하는 서버에서 pull 받아서 해당 이미지를 통해 사용자가 사용할 수 있는 상태(service)로 만든다.
+
+### CI
+
+**create-cicd-devops-image-playbook.yml**
+
+```yaml
+- hosts: all
+#   become: true
+
+  tasks:
+  - name: create a docker image with deployed waf file
+    command: docker build -t yoon11/cicd-project-ansible .
+    args: 
+        chdir: /root
+    
+  - name: push the image on Docker Hub
+    command: docker push yoon11/cicd-project-ansible
+
+  - name: remove the docker image from the ansible server
+    command: docker rmi yoon11/cicd-project-ansible  
+    ignore_errors: yes
+```
+
+**Dockerfile**
+
+```text
+FROM tomcat:latest
+
+COPY ./hello-world.war /usr/local/tomcat/webapps
+```
+
+**Ansible Playbook을 이용한 Docker Image 생성(CI job)**
+
+- Item name -> My-K8s-Project-for-CI
+- Build Trigger
+  - Poll SCM: * * * * *
+- Post-build Actions
+  - SSH Server: ansible-sever
+- Exec command
+  - ansible-playbook -i ./k8s/hosts create-cicd-devops-image-playbook.yml --limit ansible-server
+  - 이미지를 만들고 푸시하는 작업은 Ansible Server 에서만 한정
+
+**결과**
+
+![image](https://user-images.githubusercontent.com/83503188/202852093-6919bb90-cb97-4464-8bcc-83c01fe4ef03.png)
+### CD
+
+CI 작업을 통해 Registry 에 업로드된 이미지를 가지고 작업
+
+- Post-build Actions
+  - Build other projects: 현재 작업이 끝나고 빌드후에 다른 프로젝트를 또 다시 실행하겠다는 의미
+    - Deploy on Kubernetes CD (CD job): My-K8s-Project-Ansible
+    - Trigger only if builds is stable
+
+**결과**
+
+![image](https://user-images.githubusercontent.com/83503188/202852274-2b2a91dd-69fc-47a1-a946-d04089b7818e.png)
+
+![image](https://user-images.githubusercontent.com/83503188/202852305-431d089a-59d5-40b2-9239-621b960da9aa.png)
+
+
+
+
+
