@@ -302,6 +302,7 @@ kubectl apply -f cicd-devops-service.yml
 ```
 
 **결과**
+
 ![image](https://user-images.githubusercontent.com/83503188/189640522-5c03bcc2-ac9c-453f-8b2e-37f5ac4711a6.png)
 
 ![image](https://user-images.githubusercontent.com/83503188/202843668-3bf37d8a-1da3-4eb5-9f89-05963a362bdf.png)
