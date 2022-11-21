@@ -438,7 +438,7 @@ ansible-playbook -i hosts first-devops-playbook.yml
     ignore_errors: yes
 
   - name: remove current docker image
-    command: docker rmi edowon0623/cicd-project-ansible
+    command: docker rmi yoon11/cicd-project-ansible
     ignore_errors: yes
 
   - name: build a docker image with deployed war file
