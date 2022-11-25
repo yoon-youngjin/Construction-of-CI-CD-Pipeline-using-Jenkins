@@ -19,6 +19,7 @@ public class WelcomeController {
 
         model.addAttribute("msg", getMessage());
         model.addAttribute("today", new Date());
+
         return "index";
 
     }

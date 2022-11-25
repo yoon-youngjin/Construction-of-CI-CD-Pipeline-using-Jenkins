@@ -1,4 +1,4 @@
-# Advanced Jenkins 사용 
+# Advanced Jenkins 사용 1 - Pipeline
 
 ## Delivery Pipeline 사용 
 
