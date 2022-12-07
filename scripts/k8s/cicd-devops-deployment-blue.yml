@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-deployment-blue
+spec:
+  selector:
+    matchLabels:
+      app: cicd-devops-project
+      color: blue
+  replicas: 2
+
+  template:
+    metadata:
+      labels:
+        app: cicd-devops-project
+        color: blue
+    spec:
+      containers: # Section2,3에서 사용한 컨테이너
+        - name: cicd-devops-project
+          image: yoon11/cicd-project-ansible
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080

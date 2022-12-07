@@ -1,0 +1,26 @@
+- name: Create pods using deployment
+  hosts: kubernetes
+  vars_files:
+    - /root/sysctl_param.yml
+  vars:
+    color: '{{ color }}'
+
+
+  tasks:
+    - name: delete the previous blue deployment
+      command: kubectl delete deployment.app/cicd-deployment-blue
+      when: color == 'green'
+      ignore_errors: yes
+
+    - name: create a blue deployment
+      command: kubectl apply -f cicd-devops-deployment-blue.yml
+      when: color == 'green'
+
+    - name: delete the previous green deployment
+      command: kubectl delete deployment.app/cicd-deployment-green
+      when: color == 'blue'
+      ignore_errors: yes
+
+    - name: create a green deployment
+      command: kubectl apply -f cicd-devops-deployment-green.yml
+      when: color == 'blue'

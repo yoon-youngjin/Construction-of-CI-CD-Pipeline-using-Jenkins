@@ -1,0 +1,12 @@
+- name: create service for deployment
+  hosts: kubernetes
+  # become: true
+  # user: ubuntu
+
+  tasks:
+    - name: delete the previous service
+      command: kubectl delete service/cicd-service
+      ignore_errors: yes
+
+    - name: create a service
+      command: kubectl apply -f cicd-devops-service.yml

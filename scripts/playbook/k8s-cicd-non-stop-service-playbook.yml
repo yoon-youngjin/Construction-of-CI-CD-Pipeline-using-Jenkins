@@ -1,0 +1,23 @@
+- name: create service for deployment
+  hosts: kubernetes
+  vars_files:
+    - /root/sysctl_param.yml
+  vars:
+    color: '{{ color }}'
+
+  tasks:
+    - name: rollout blue deployment
+      command: kubectl rollout status deployment cicd-deployment-blue
+      when: color == 'green'
+
+    - name: rollout green deployment
+      command: kubectl rollout status deployment cicd-deployment-green
+      when: color == 'blue'
+
+    - name: patch a blue service to green service
+      command: kubectl apply -f cicd-devops-blue-service.yml
+      when: color == 'green'
+
+    - name: patch a green service to blue service
+      command: kubectl apply -f cicd-devops-green-service.yml
+      when: color == 'blue'
