@@ -14,6 +14,6 @@
 
 ---
 
-### Zero Downtime Deployment
+### [**Zero Downtime Deployment**](https://github.com/yoon-youngjin/Construction-of-CI-CD-Pipeline-using-Jenkins/blob/main/docs/zero-downtime.md)
 
 ![기술 설계문서](https://user-images.githubusercontent.com/83503188/206188084-5ab91dee-1c9b-43b8-a71d-246f4b7cb053.png)
