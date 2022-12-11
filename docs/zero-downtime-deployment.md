@@ -112,7 +112,141 @@ fi
 
 # Kubernetes
 
-## 서비스
+## 컨트롤러(Controller)
+
+7가지 컨트롤러(ReplicationController, ReplicaSet, Deployment, DaemonSet, StatefulSet, Job, CronJob)이 존재한다.
+
+### Controller?
+
+- 몇 개의 Pod 로 애플리케이션을 운영할지 결정
+- Pod 의 개수를 보장
+
+![image](https://user-images.githubusercontent.com/83503188/206910798-f008a75a-1cfd-4414-bf0b-baece7c3118d.png)
+- `kubectl create deployment webui --image=nginx --replicas` 라는 명령어를 Master Node 의 API 에 보낸다.
+- API 는 etcd 에서 정보를 얻어와서 scheduler 에게 요청한다.
+- scheduler 는 Worker Node 중 nginx 를 배포하면 좋을지 결정하여 API 에게 응답한다.
+- **API 는 controller 에게 nginx container 3개를 보장하라는 요청을 한다.**
+- API 는 scheduler 가 결정한 Worker Node 에 nginx pod 를 생성한다.
+
+controller 는 각 Worker Node 에 배치된 Pod 를 감시하며 Pod 가 문제가 생기는 경우 API 에 요청하여 scheduler 를 통해 배치할 Worker Node 를 결정하고 새로운 Pod 를 생성한다.
+
+**Controller 종류**
+
+![image](https://user-images.githubusercontent.com/83503188/206910891-5215e8da-7c14-42a6-a470-faee4fe58b93.png)
+
+### ReplicationController
+
+![image](https://user-images.githubusercontent.com/83503188/206911091-09586f58-0556-4c83-958c-0e4558e9a2e5.png)
+
+- 요구하는 Pod 의 개수를 보장하며 Pod 집합의 실행을 항상 안정적으로 유지하는 것을 목표
+  - 요구하는 Pod 의 개수 보다 부족하면 template 을 이용해 Pod 를 추가
+  - 요구하는 Pod 의 개수 보다 많으면 최근에 생성된 Pod 를 삭제
+- 기본 구성
+  - selector
+  - replicas
+  - template
+
+selector 의 key 와 value 를 통해 replicas 개수만큼 Pod 를 운영한다.
+
+Controller 는 현재 동작 중인 Pod 를 스캔하면 key, value 의 Label 을 가지고 있는 container 가 동작 중인지 살펴보며 많으면 개수를 줄이고, 적으면 template 을 확인하여 개수를 늘린다.
+
+**ReplicationController-definition**
+
+![image](https://user-images.githubusercontent.com/83503188/206911473-6514f3d6-8bd2-40cb-8150-bd66739338de.png)
+- `app: webui` 라는 label 을 가진 3개의 Pod 를 보장한다.
+- template 은 반드시 selector 에 존재하는 key, value 를 label 로 포함하고 있어야 한다.
+
+**ReplicationController Example - 1**
+
+`rc-nginx.yaml`
+
+```yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: rc-nginx
+spec:
+  replicas: 3
+  selector:
+    app: webui
+  template:
+    metadata:
+      name: nginx-pod
+      labels:
+        app: webui
+    spec:
+      containers:
+      - name: nginx-container
+-       image: nginx:1.14
+```
+
+```text
+kubectl create -f rc-nginx.yaml
+watch kubectl get pods -o wide
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206912198-7d53f26e-f3ce-4262-9bd2-1e89a6530a64.png)
+
+```text
+kubectl get replicationcontrollers
+kubectl get rc
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206912249-891e453c-e2a7-4e26-aebe-7b73658515d1.png)
+
+최대 Pod 개수가 유지 중에 동일한 label(`app=webui`) 을 가진 Pod 추가 생성 테스트
+
+```text
+kubectl run redis --image=redis --labels=app=webui --dry-run -o yaml > redis.yaml # dry-run 옵션을 통해 redis.yaml 생성
+kubectl get pod --show-labels
+kubectl create -f redis.yaml
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206912767-6561c8fd-02ee-4653-b321-5ada45edd4f7.png)
+- 실행되자마자 Terminating
+- 현재 이미 동일한 label(`app=webui`)을 가진 Pod 3개가 운영 중이기 때문에 controller 에서 삭제
+
+**ReplicationController Example - 2**
+
+replicas 개수 변경 테스트
+
+```text
+kubectl edit rc rc-nginx # 실행 중인 rc-nginx 편집
+kubectl scale rc rc-nginx --replicas=4 # scale 명령어를 통해 replicas 개수 변경
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206912922-84bb6d67-07ce-4007-ba46-51817a227093.png)
+- replicas 개수 4개로 수정
+
+![image](https://user-images.githubusercontent.com/83503188/206912958-263092bb-ab07-46bb-8a5e-88ce1384365f.png)
+
+**ReplicationController Example - 3**
+
+template 정보 변경 테스트
+
+```text
+kubectl edit rc rc-nginx
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206913135-7a30799e-6ce0-491f-ab11-fdef148c7b19.png)
+- nginx 버전을 1.14 -> 1.15 변경
+- 기존에 운영 중이던 nginx pod 새로 생성?
+
+![image](https://user-images.githubusercontent.com/83503188/206913208-593ea4ec-d055-44d8-a94d-49185f4d3462.png)
+- 변경사항 X
+- controller 는 selector 만 참조하기 때문에 template 의 정보를 참조하는 경우는 새로 Pod 가 생성되는 시점이다.
+
+```text
+kubectl describe pod rc-nginx-dv2t2 # Pod 상세정보 확인 -> nginx 버전 1.14
+kubectl delete pod rc-nginx-f8d7f # Pod 삭제
+kubectl describe pod rc-nginx-pws68 # controller 에 의해 새로 생성된 Pod 상세정보 확인
+```
+
+![image](https://user-images.githubusercontent.com/83503188/206913475-55e2d670-fc9a-47a2-bdb7-f0ab8ed53372.png)
+
+Service 동작 중에 nginx 웹 버전이 1.14에서 1.15로 변경되었다. Service 가 중지되지 않고 비즈니스 연속성을 지원해주는 것을 **Rolling Update** 라고 한다.
+
+## 서비스(Service)
 
 `서비스 = 쿠버네티스 네트워크 / API` 
 
