@@ -1,4 +1,4 @@
-# Ansible을 이용한 무중단 배포
+# Ansible 을 이용한 무중단 배포 & Jmeter 를 통한 테스트
 
 1. 파일을 통해 현재 Service 가 바라보고 있는 버전 관리
 2. 파일을 읽어와서 반대 방향에 Deployment 삭제 후 생성
@@ -109,6 +109,31 @@ else
    $(sed -i '1s/color: green/color: blue/' /root/sysctl_param.yml)
 fi
 ```
+
+## Jmeter 를 통한 무중단 배포 테스트
+
+![image](https://user-images.githubusercontent.com/83503188/207593348-25b8a6ae-365c-4da5-a958-043147ab2070.png)
+- Number of Threads (users) : 가상사용자 ( Thread )의 수
+- Ramp-up period (seconds) : 요청 주기(초)
+- Loop Count : 테스트를 반복하는 횟수, Infinite - 무한대로 호출
+
+**애플리케이션 버전 변경**
+
+![image](https://user-images.githubusercontent.com/83503188/207597689-e662b4b9-76c0-48a1-bdb8-138a92237c3c.png)
+- `11.0` -> `12.0`
+
+**배포를 진행하며 Jmeter 를 통한 지속적인 요청**
+
+`배포 이전 상태`
+
+![image](https://user-images.githubusercontent.com/83503188/207603673-f563f492-8438-4e26-ae8c-b665da7af6cd.png)
+
+`배포 이후 상태`
+
+![image](https://user-images.githubusercontent.com/83503188/207603690-5ed4d648-6a50-4dec-9f78-2db47296c771.png)
+
+![image](https://user-images.githubusercontent.com/83503188/207603163-09157ec8-6ed8-419d-b74e-d5b19d4e7368.png)
+- 중단 & 오류없이 정상적으로 버전 업데이트 완료
 
 ---
 
@@ -374,7 +399,79 @@ kubectl delete rs rs-nginx --cascade=false
   - 각 Pod 들의 실행 중인 프로그램이 달라도 Label 을 기준으로 관리한다. 
   - 따라서 1개의 Pod 는 Redis, 2개의 Pod 는 nginx 일 수 있지만 이런식으로 관리해서는 안된다.
 
-  
+### Deployment
+
+Deployment 는 Controller 종류인 ReplicaSet 을 제어해주는 부모 역할
+
+Deployment 의 목적은 **Rolling Update**
+
+Deployment를 생성하면 ReplicaSet 하나를 생성하여 컨트롤하며 Pod수를 조절한다. 또한 Deployment에게 Rolling Update 명령어를 실행하면 새로운 버전의 Pod 를 동작시킨다.
+
+> Rolling Update?
+> 
+> Pod 인스턴스를 점진적으로 새로운 버전으로 업데이트하여 Deployment 업데이트가 서비스 중단 없이 이루어질 수 있도록 해준다.
+
+**Deployment definition**
+
+![image](https://user-images.githubusercontent.com/83503188/207361789-73e02bac-4dd6-4408-ad34-0668f6030f60.png)
+- kind를 제외하고 다른점이 없다. 
+
+**Deployment example**
+
+`deploy-nginx.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webui
+  template:
+    metadata:
+      name: nginx-pod
+      labels:
+        app: webui
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx:1.14
+```
+
+```text
+kubectl create -f deploy-nginx.yaml
+kubectl get deploy,rs,pod
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207362478-08197428-2a8a-4524-9334-5feb84da7c97.png)
+- deployment 1개, replicaset 1개, pod 3개가 생성
+
+![image](https://user-images.githubusercontent.com/83503188/207363128-242f90c1-0e44-44e0-a3e5-fa12b140fb7b.png)
+- 빨간색은 controller 이름, 파란색은 pod 이름
+
+```text
+kubectl delete rs deploy-nginx-967c5f57d # ReplicaSet을 삭제하면?
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207364376-7439a356-239c-440b-abc9-ac5a47b894de.png)
+- ReplicaSet 1개, Pod 3개 삭제 후 전부 다시 생성
+
+**Deployment Rolling Update & Rolling Back - 1**
+
+- Rolling Update
+  - 서비스 도중에 버전 업데이트
+  - `kubectl set image deployment <deploy_name> <container_name>=<new_version_image>`
+- RollBack
+  - 서비스 도중에 이전 버전으로 돌아가기
+  - `kubectl rollout history deployment <deploy_name>`
+  - `kubectl rollout undo deploy <deploy_name>`
+
+11분부터 다시
+
+
 ## 서비스(Service)
 
 `서비스 = 쿠버네티스 네트워크 / API`
