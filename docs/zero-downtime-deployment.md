@@ -416,7 +416,7 @@ Deployment를 생성하면 ReplicaSet 하나를 생성하여 컨트롤하며 Pod
 ![image](https://user-images.githubusercontent.com/83503188/207361789-73e02bac-4dd6-4408-ad34-0668f6030f60.png)
 - kind를 제외하고 다른점이 없다. 
 
-**Deployment example**
+**Deployment example - 1**
 
 `deploy-nginx.yaml`
 
@@ -469,8 +469,144 @@ kubectl delete rs deploy-nginx-967c5f57d # ReplicaSet을 삭제하면?
   - `kubectl rollout history deployment <deploy_name>`
   - `kubectl rollout undo deploy <deploy_name>`
 
-11분부터 다시
 
+![image](https://user-images.githubusercontent.com/83503188/207613598-70902156-6130-4fac-9ee1-f9b9c9ac7636.png)
+- app-deploy 라는 이름의 Deployment 를 통해 nginx:1.14 버전의 Pod 3개가 동작 중인 상태
+- `kubectl set image deployment app-deploy app=nginx:1.15 --record` 라는 명령어가 실행되면 Deployment 는 새로운 이름의 ReplicaSet 을 생성하여 nginx:1.15 버전의 Pod 1 개를 추가 운영한다.
+- 새로 추가된 Pod 가 Running 상태가 되면 구버전의 Pod 하나를 줄인다.
+- 일정한 시간이 지나면 반복적으로 구버전의 Pod 개수 하나를 줄이고, 신버전의 Pod 개수를 하나 늘린다.
+
+![image](https://user-images.githubusercontent.com/83503188/207614275-0a234f10-502d-4a72-a6cd-740b38c3473c.png)
+- 결과적으로 구버전의 Pod 가 모두 사라지고, 신버전의 Pod 개수가 3개가 된다.
+
+**Deployment Rolling Update & Rolling Back example - 1**
+
+`deployment-exam1.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deploy
+spec:
+  selector:
+    matchLabels:
+      app: webui
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: webui
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx:1.14
+```
+
+```text
+kubectl create -f deployment-exam1.yaml --record
+kubectl get deployment,rs,pod
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207616010-4781dbe2-80af-4e0e-a833-17029ed57651.png)
+
+
+```text
+kubectl set image deploy app-deploy web=nginx:1.15 --record # Rolling update -> 1.15 Pod 1개 생성 
+kubectl describe pod app-deploy-65c4469fbc-6q9c4
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207618205-be665420-bda9-4099-8fb4-3b79c86a5493.png)
+- `nginx:1.14` -> `nginx:1.15`
+
+```text
+kubectl image deployment app-deploy web=nginx:1.16 --record
+kubectl rollout status deployment app-deploy 
+```
+- `kubectl rollout status`: 업데이트 상태 정보 확인
+
+![image](https://user-images.githubusercontent.com/83503188/207619406-7a7b1849-dc17-44f8-ab50-a527b56c8af7.png)
+
+```text
+kubectl image deployment app-deploy web=nginx:1.17 --record
+kubectl rollout pause deployment app-deploy
+```
+- `kubectl rollout pause`: 업데이트 일시정지
+- `kubectl rollout resume`: 업데이트 재시작
+
+```text
+kubectl rollout history deployment app-deploy
+```
+- `kubectl rollout history`: 업데이트 history 확인
+
+![image](https://user-images.githubusercontent.com/83503188/207620597-a6f2325e-8832-4062-bd4f-092a46eddd24.png)
+
+```text
+kubectl rollout undo deployment app-deploy
+```
+- `kubectl rollout undo`: Rollback 명령어
+
+![image](https://user-images.githubusercontent.com/83503188/207623416-70e5a41b-4a52-454b-934c-7974d7f314ad.png)
+- 이전 버전으로 Rollback
+- `kubectl rollout undo deployment app-deploy --to-revision=3`: revision 값으로 롤백
+
+**Deployment Rolling Update & Rolling Back example - 2**
+
+`deployment-exam2.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-nginx
+  annotations:
+    kubernetes.io/change-cause: version 1.14
+spec:
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webui
+  template:
+    metadata:
+      labels:
+        app: webui
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx:1.14
+```
+- annotation
+  - kubernetes.io/change-cause: `version 1.14` 이름으로 history 를 남길 수 있다.
+- progressDeadlineSeconds: default=600, 600초 동안 업데이트를 진행하지 못하면 업데이트 취소
+- revisionHistoryLimit: default=10, 현재 동작중인 history replica 개수를 10개 보존, 따라서 해당 버전으로 되돌아가기 가능
+- maxSurge: Rolling Update 시 3개의 Pod라면 25%는 0.75개 반올림 시 1개, 따라서 업데이트시 Pod 의 개수가 4개가 되면 하나 삭제하는 개념, %가 높아지면 업데이트 속도가 빨라진다.
+- maxUnavailable: Pod 의 Terminating 개수를 조절
+
+`yaml 파일을 가지고 rolling update 하기`
+
+```text
+kubectl apply -f deployment-exam2.yaml
+vi deployment-exam2.yaml
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207626179-67b597ed-54d4-483c-816f-2388fdbb08ec.png)
+
+```text
+kubectl apply -f deployment-exam2.yaml
+kubectl describe pod deploy-nginx-fbc78867f-cxd96 
+kubectl rollout history deployment deploy-nginx
+```
+
+![image](https://user-images.githubusercontent.com/83503188/207626484-c0093b93-7817-4ce7-b928-fd99d5571ab5.png)
+
+![image](https://user-images.githubusercontent.com/83503188/207626628-11591f24-2d88-4a90-893b-e4f59faa1800.png)
 
 ## 서비스(Service)
 
