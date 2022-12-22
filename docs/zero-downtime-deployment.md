@@ -137,7 +137,7 @@ fi
 
 ---
 
-# Kubernetes
+# kubernetes(k8s)
 
 ## 컨트롤러(Controller)
 
