@@ -161,7 +161,6 @@ docker run --privileged --name docker-server -itd -p 10022:22 -p 8081:8080 -e co
 **SSH 접속**
 ```text
 ssh root@localhost -p 10022
-password: P@ssw0rd
 ```
 
 **Docker 실행을 위한 설정 변경**
