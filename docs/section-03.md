@@ -113,7 +113,6 @@ SSH 기반의 경우 키 배포 이후에는 별도로 관리해야 될 부분�
 ## Docker 컨테이너로 Ansible 실행하기 
 
 - Ansible 을 가지고 있는 도커 이미지 -> edowon0623/ansible
-  - password: P@ssw0rd
 
 ### Run Ansible Server
 
