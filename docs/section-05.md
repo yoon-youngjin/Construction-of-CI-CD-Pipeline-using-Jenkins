@@ -205,7 +205,7 @@ pipeline {
 
 ![image](https://user-images.githubusercontent.com/83503188/203056232-982dda76-400a-4535-91f3-c55de74c40c2.png)
 
-### Jenkins Pipeline 프로제긑 - Maven build pipeline
+### Jenkins Pipeline 프로 - Maven build pipeline
 
 이전에 작업했던 cicd-web-project 예제를 Maven 빌드 
 
