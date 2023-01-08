@@ -201,11 +201,6 @@ ssh-copy-id root@[slave node IP]
 
 Pipeline 프로젝트를 slave 노드에서 실행
 
-```yaml
-
-```
-- agent: slave1 Node 에 현재 pipeline을 빌드
-
 **Build Stage 추가**
 
 ```yaml
@@ -234,6 +229,7 @@ pipeline {
     }
 }
 ```
+- agent: slave1 Node 에 현재 pipeline을 빌드
 
 **빌드 결과**
 
