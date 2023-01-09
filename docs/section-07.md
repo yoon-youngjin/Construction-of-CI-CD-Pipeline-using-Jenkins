@@ -33,9 +33,9 @@
 - 이미지에 해당하는 인스턴스의 보안 그룹을 선택
 - Tomcat 서버, Docker 서버, SonarQube 서버, Ansible 서버를 위해 4개의 인스턴스 생성
 
-![image](https://user-images.githubusercontent.com/83503188/206906775-1875a399-f273-4cdb-8074-35d91440c987.png)
+![image](https://user-images.githubusercontent.com/83503188/211237729-ee54e7e1-2244-4d24-b48c-5a34378763dc.png)
 
-![image](https://user-images.githubusercontent.com/83503188/206906881-a5fabf8c-0724-4c26-9314-933674d1a3fa.png)
+![image](https://user-images.githubusercontent.com/83503188/211237802-3c08de3f-779b-4468-8bf8-c106ad73efe9.png)
 - 이렇게 만든 5개의 인스턴스는 같은 네트워크에 묶여있기 때문에 동일한 VPC ID를 갖는다.
 - VPC(Virtual Private Cloud)는 기존의 가상 사설 네트워크망을 구성할 때 VPN 이라는 용어를 사용하는데 AWS 에서는 사설 네트워크망을 클라우드 형태로 사용하고 있기 때문에 VPC 라고한다.
 - VPC 는 가상 네트워크이기 때문에, 가상 네트워크에 묶여있는 PC 들간의 통신을 할 때 아무런 제약이 없다.
